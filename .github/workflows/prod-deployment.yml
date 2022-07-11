@@ -1,0 +1,35 @@
+name: Deployment
+on:
+  push:
+    branches:
+      - main
+jobs:
+  Deploy-to-VPS:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+      - uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - run: npm cache clean --force
+      - run: npm ci
+      - run: npm install -g @angular/cli > /dev/null
+      - run: npm run build --if-present
+        env:
+          CI: false
+      - name: Copy build folder to VPS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          source: ./dist/sacms
+          target: /var/www/sacms.isaias-tech.com
+      - run: echo "🍏 This job's status is ${{ job.status }}."
